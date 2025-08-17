@@ -1,19 +1,19 @@
-const jwt = require('jsonwebtoken')
-const User = require('../models/user.model')
+const jwt = require("jsonwebtoken");
 
+const requireAuth = (req, res, next) => {
+  const authHeader = req.headers.authorization;
 
-module.exports.userVerification = (req, res) => {
-  const token = req.cookies.token
-  if (!token) {
-    return res.json({ status: false })
-  }
-  jwt.verify(token, process.env.access_token_scret, async (err, data) => {
-    if (err) {
-     return res.json({ status: false })
-    } else {
-      const user = await User.findById(data.id)
-      if (user) return res.json({ status: true, user: user.username })
-      else return res.json({ status: false })
-    }
-  })
-}
+  if (!authHeader)
+    return res.status(401).json({ message: "No token provided" });
+
+  const token = authHeader.split(" ")[1]; // "Bearer TOKEN"
+
+  jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
+    if (err) return res.status(403).json({ message: "Invalid token" });
+
+    req.user = decoded; // { id, role }
+    next();
+  });
+};
+
+module.exports = { requireAuth };

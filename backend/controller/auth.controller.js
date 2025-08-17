@@ -1,40 +1,53 @@
-const { createtoken } = require('../util/token.js');
-const User= require('../models/user.model.js');
-const bcrypt = require('bcryptjs')
+const bcrypt = require("bcryptjs");
+const User = require("../models/user.model");
+const { createtoken } = require("../util/token");
 
-const signup = async (req,res)=>{
-   try {
-      const {username , email , password , createdat} = req.body;
-      const existinguser = await User.findOne({email})
-      if(existinguser){
-         res.status(400).json({message:"user already exist"})
-      }
-      const hashpassword = await bcrypt.hash(password,10);
-      const newuser = await User.create({
-         username,
-        email,
-        password:hashpassword,
-         createdat
-      })
-      res.status(200).json({message:"signup successfully" , newuser})
-   } catch (error) {
-      res.status(500).json({message:error.message})
-   }
-}
-const login = async (req, res) =>{
-   try {
-      const {email , password} = req.body;
-   const user = await User.findOne({email})
-   if(!user){
-      res.status(400).json({message:"incorrect-email"})
-   }
-   const comparepassword = await bcrypt.compare(password,user.password)
-   if(!comparepassword){
-      res.status(400).json({message:"incorrect-password"})
-   }
-   await res.status(200).json({message:"login succesfully"})
-   } catch (error) {
-       await res.status(500).json({message:error.message})
-   }
-}
-module.exports = {signup , login}
+// ✅ Signup
+const signup = async (req, res) => {
+  try {
+    const { username, email, password, role } = req.body;
+
+    const existingUser = await User.findOne({ email });
+    if (existingUser)
+      return res.status(400).json({ message: "User already exists" });
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const newUser = await User.create({
+      username,
+      email,
+      password: hashedPassword,
+      role,
+    });
+
+    const token = createtoken(newUser._id, newUser.role);
+
+    res
+      .status(201)
+      .json({ message: "Signup successful", user: newUser, token });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// ✅ Login
+const login = async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    const user = await User.findOne({ email });
+    if (!user) return res.status(400).json({ message: "Invalid email" });
+
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch)
+      return res.status(400).json({ message: "Invalid password" });
+
+    const token = createtinioken(user._id, user.role);
+
+    res.status(200).json({ message: "Login successful", user, token });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+module.exports = { signup, login };
